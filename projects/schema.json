@@ -51,7 +51,7 @@
       "additionalProperties": false,
       "properties": {
         "allow": {
-          "description": "Glob patterns over catalog model names (catalog/models.yaml). Defaults to [\"*\"]. Each pattern must match at least one catalog model.",
+          "description": "Glob patterns over catalog model names (the project registry's model records). Defaults to [\"*\"]. Each pattern must match at least one catalog model.",
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
@@ -63,7 +63,7 @@
       }
     },
     "routing": {
-      "description": "How model \"auto\" picks a model for this project, always among the models it may use. cheapest: lowest price in catalog/models.yaml. fastest: lowest time to first token measured by the ranking job, cheapest first where none is known yet. semantic: the vLLM Semantic Router names the task class and catalog tasks give the order, cheapest as the fallback. fixed:<model>: always that model. Default: cheapest.",
+      "description": "How model \"auto\" picks a model for this project, always among the models it may use. cheapest: lowest price in the catalog. fastest: lowest time to first token measured by the ranking job, cheapest first where none is known yet. semantic: the vLLM Semantic Router names the task class and catalog tasks give the order, cheapest as the fallback. fixed:<model>: always that model. Default: cheapest.",
       "type": "string",
       "pattern": "^(cheapest|fastest|semantic|fixed:[a-z0-9.-]+)$"
     },
@@ -84,7 +84,7 @@
       }
     },
     "budget": {
-      "description": "Spend cap in USD over a fixed 30-day window (the rate-limit service's month: 30-day periods counted from the Unix epoch, not calendar months), at agentgateway's prices (catalog/models.yaml). Self-hosted models cost nothing. Charged when a call completes, so the call that crosses the cap still finishes. Absent: no cap.",
+      "description": "Spend cap in USD over a fixed 30-day window (the rate-limit service's month: 30-day periods counted from the Unix epoch, not calendar months), at agentgateway's prices (the catalog's). Self-hosted models cost nothing. Charged when a call completes, so the call that crosses the cap still finishes. Absent: no cap.",
       "type": "object",
       "additionalProperties": false,
       "required": [

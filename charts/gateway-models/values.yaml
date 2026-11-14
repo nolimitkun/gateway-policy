@@ -10,6 +10,6 @@ auto:
   opaPort: 8181
   cacheTTL: ""
 
-# Set by the project registry when it packages the chart: the catalog, as
-# scripts/gen-catalog.py renders it (generated/agentgateway-catalog.yaml).
+# Set by the project registry when it packages the chart: its catalog records, as
+# scripts/gen-catalog.py renders them (generated/agentgateway-catalog.yaml).
 catalog: {}

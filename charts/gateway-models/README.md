@@ -1,6 +1,7 @@
 # gateway-models
 
-The gateway's model routes, templated over the catalog (`catalog/models.yaml`):
+The gateway's model routes, templated over the catalog (the project registry's
+`model`, `google_api` and `catalog` records, rendered by `scripts/gen-catalog.py`):
 
 - one `AgentgatewayModel` per model: a KServe release routes to its InferencePool in
   its serving namespace, with the name vLLM serves; Vertex AI and DeepSeek models
@@ -9,12 +10,13 @@ The gateway's model routes, templated over the catalog (`catalog/models.yaml`):
   project gets (`policies/gateway/select.rego`);
 - each Google API: an `AgentgatewayBackend` and an `HTTPRoute` under `/google/<name>/`.
 
-Nobody installs this directory as it is. Once a policy commit is approved and active,
-the project registry packages the chart at that commit with
-`generated/agentgateway-catalog.yaml` as its `catalog` value, as version `1.0.<n>`,
+Nobody installs this directory as it is. The project registry packages the chart at
+the active policy commit with its catalog records rendered as the `catalog` value,
+whenever either changes, as version `1.0.<n>`,
 and publishes it to its Helm repository in MinIO (bucket `gateway-models`). The
 deployment repo's Argo CD application `gateway-models` installs the newest version
 with the gateway's own values (`gatewayName`, `gcp`, `kserve`, `auto`).
 
-A change here or to the catalog is therefore a policy change: tested, replayed,
-approved, then live within a few minutes (Argo CD polls the repository).
+A change here is a policy change, and a change to the catalog a registry change
+request: either is tested, replayed and approved, then live within a few minutes
+(Argo CD polls the repository).

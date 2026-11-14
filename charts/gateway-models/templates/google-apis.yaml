@@ -1,6 +1,6 @@
 {{- $v := .Values }}
-{{- /* Google APIs come from the catalog (catalog/models.yaml), through
-     generated/agentgateway-catalog.yaml (values: catalog). */}}
+{{- /* Google APIs come from the catalog (the project registry's google_api records,
+     rendered by gen-catalog.py; values: catalog). */}}
 {{- $catalog := .Values.catalog | default dict }}
 {{- range $name, $api := $catalog.googleApis }}
 {{- $host := $api.host }}
