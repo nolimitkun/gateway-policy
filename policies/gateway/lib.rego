@@ -5,6 +5,14 @@ package gateway.lib
 
 import rego.v1
 
+# The catalog: the project registry's records, in the gateway-projects bundle
+# (data.registry.catalog). Until every OPA has that bundle, the copy the policy
+# bundle had (data.catalog): the catalog is moving from here to the registry,
+# and either bundle may load first.
+catalog := data.registry.catalog if {
+	data.registry.catalog
+} else := data.catalog
+
 # The project's placements, capped by its data class even if the generated
 # data says otherwise.
 placements(project_id) := {p |
@@ -18,7 +26,7 @@ placements(project_id) := {p |
 allowed(project_id) := by_rule(project_id) | by_exception(project_id)
 
 by_rule(project_id) := {m |
-	some m, model in data.catalog.models
+	some m, model in catalog.models
 	model.placement in placements(project_id)
 	some pattern in data.projects[project_id].models_allow
 

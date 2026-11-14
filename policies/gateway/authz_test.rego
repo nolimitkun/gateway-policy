@@ -148,9 +148,9 @@ test_catalog_entries_usable_by_some_class if {
 
 test_placement_read_from_catalog if {
 	not authz.allow with input as chat("open-webui", "qwen3.6-27b")
-		with data.catalog.models["qwen3.6-27b"].placement as "external"
+		with data.registry.catalog.models["qwen3.6-27b"].placement as "external"
 	authz.allow with input as chat("open-webui", "new-model")
-		with data.catalog.models["new-model"] as {"placement": "onprem", "provider": "OpenAI"}
+		with data.registry.catalog.models["new-model"] as {"placement": "onprem", "provider": "OpenAI"}
 }
 
 # Every project's generated placement is within its data class.
@@ -344,7 +344,7 @@ test_deployments_never_for_agent_keys if {
 # The catalog's KServe releases are ordinary catalog models.
 test_kserve_release_is_an_onprem_model if {
 	authz.allow with input as chat("open-webui", "qwen2.5-1.5b")
-		with data.catalog.models["qwen2.5-1.5b"] as {"placement": "onprem", "provider": "KServe", "price": {"input": 0, "output": 0}}
+		with data.registry.catalog.models["qwen2.5-1.5b"] as {"placement": "onprem", "provider": "KServe", "price": {"input": 0, "output": 0}}
 }
 
 open_webui_limits := {"requests_per_minute": 120, "tokens_per_minute": 4000000000, "budget_micro_usd": 50000000}

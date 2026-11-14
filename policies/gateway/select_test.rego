@@ -123,7 +123,7 @@ test_no_result if {
 test_selection_within_allowed if {
 	routings := {"cheapest", "fastest", "semantic", "fixed:gemini-4-argon", "fixed:deepseek-v4-pro", "fixed:qwen3.6-27b"}
 	narrowing := [{}, {"placement": ["gcp"]}, {"placement": ["external"]}, {"models_allow": ["gemini-4-*", "deepseek-*"]}]
-	tasks := object.union({t: true | some t, _ in data.catalog.tasks}, {"": true})
+	tasks := object.union({t: true | some t, _ in lib.catalog.tasks}, {"": true})
 	every project_id, project in data.projects {
 		every overrides in narrowing {
 			every routing in routings {

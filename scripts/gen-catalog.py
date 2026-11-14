@@ -30,6 +30,9 @@ TOOLS = ROOT / "catalog" / "tools.yaml"
 RISKS = {"read", "write", "irreversible"}
 GATEWAY_OUT = ROOT / "generated" / "agentgateway-catalog.yaml"
 POLICY_OUT = ROOT / "policies" / "gateway" / "catalog" / "data.json"
+# The same data in the gateway-projects bundle, as data.registry.catalog: the project
+# registry renders it from its catalog records, and the policy reads it first (lib.rego).
+REGISTRY_OUT = ROOT / "policies" / "gateway-projects" / "registry" / "catalog" / "data.json"
 
 PLACEMENTS = {"onprem", "gcp", "external"}
 
@@ -198,6 +201,7 @@ def render(catalog, tool_risks):
     return {
         GATEWAY_OUT: header + yaml.safe_dump({"catalog": gateway}, sort_keys=False, width=200),
         POLICY_OUT: json.dumps(policy, indent=2, sort_keys=True) + "\n",
+        REGISTRY_OUT: json.dumps(policy, indent=2, sort_keys=True) + "\n",
     }
 
 

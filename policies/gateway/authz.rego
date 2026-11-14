@@ -75,7 +75,7 @@ allow if {
 	parts := split(path, "/")
 	parts[1] == "google"
 	count(parts) > 3
-	data.catalog.google_apis[parts[2]].placement in lib.placements(project_id)
+	lib.catalog.google_apis[parts[2]].placement in lib.placements(project_id)
 }
 
 # MCP (the merged endpoint at /mcp). A project with mcp_tools may open
@@ -127,9 +127,9 @@ autonomy_risks := {
 
 # A tool the catalog doesn't list counts as irreversible: new or renamed tools
 # stay out of agents' reach until someone has classified them.
-tool_risk(name) := data.catalog.tools[name]
+tool_risk(name) := lib.catalog.tools[name]
 
-tool_risk(name) := "irreversible" if not data.catalog.tools[name]
+tool_risk(name) := "irreversible" if not lib.catalog.tools[name]
 
 mcp_path if {
 	parts := split(path, "/")
@@ -144,7 +144,7 @@ tool_call if {
 deployment_path if {
 	parts := split(path, "/")
 	count(parts) > 3
-	parts[1] in data.catalog.serving_namespaces
+	parts[1] in lib.catalog.serving_namespaces
 }
 
 model_path if path in {"/v1/chat/completions", "/v1/completions", "/v1/responses", "/v1/messages", "/v1/embeddings"}
@@ -155,7 +155,7 @@ allowed_model(m) if m in scope_models
 # gateway asks select.rego which model they stand for after this check, and
 # it only ever names one of lib.allowed(project), so allowing the name is
 # enough when the project has any model at all.
-virtual_models := {"auto"} | {sprintf("auto-%s", [t]) | some t, _ in data.catalog.tasks}
+virtual_models := {"auto"} | {sprintf("auto-%s", [t]) | some t, _ in lib.catalog.tasks}
 
 allowed_model(m) if {
 	m in virtual_models

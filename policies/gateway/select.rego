@@ -25,7 +25,7 @@ allowed := lib.scoped(project_id, object.get(input, "key_id", ""))
 
 # What a request costs, blended at three input tokens to one output token, in
 # USD per million tokens (catalog/models.yaml prices).
-blended_price(m) := ((3 * p.input) + p.output) / 4 if p := data.catalog.models[m].price
+blended_price(m) := ((3 * p.input) + p.output) / 4 if p := lib.catalog.models[m].price
 
 # Median request duration from the gateway's metrics (rankings.rego). Unranked
 # models sort after ranked ones.
@@ -45,7 +45,7 @@ by_speed := [m | some t in sort([[latency_ms(m), blended_price(m), m] | some m i
 # The task class's preferred models that the project may use, in the catalog's
 # order. Empty without a task (the router was skipped or is down).
 task_prefs := [m |
-	some m in object.get(data.catalog.tasks, object.get(input, "task", ""), [])
+	some m in object.get(lib.catalog.tasks, object.get(input, "task", ""), [])
 	m in allowed
 ]
 

@@ -82,3 +82,21 @@ test_others_may_not_propose_changes_to_a_project if {
 test_anyone_may_ask_for_a_new_project if {
 	may("project", "create", [], "team-new")
 }
+
+test_a_catalog_change_needs_the_platform_team_and_more_for_what_it_widens if {
+	model := {"placement": "onprem", "provider": "KServe", "price": {"input": 0, "output": 0}}
+	roles("model", "update", model, object.union(model, {"price": {"input": 1, "output": 1}})) == {"platform", "cost_owner"}
+	roles("model", "update", model, object.union(model, {"placement": "gcp"})) == {"platform", "security"}
+	roles("model", "create", null, model) == {"platform", "security", "cost_owner"}
+	roles("model", "delete", model, null) == {"platform"}
+	roles("google_api", "create", null, {"placement": "gcp", "host": "x.googleapis.com"}) == {"platform", "security"}
+	roles("tool", "update", {"risk": "write"}, {"risk": "read"}) == {"platform", "security"}
+	roles("tool", "update", {"risk": "read"}, {"risk": "write"}) == {"platform"}
+	roles("tool", "create", null, {"risk": "irreversible"}) == {"platform"}
+	roles("catalog", "update", {"targets": ["a"]}, {"targets": ["a", "b"]}) == {"platform", "security"}
+}
+
+test_only_the_platform_team_proposes_catalog_changes if {
+	not may("model", "update", ["owners"], "owners")
+	may("model", "update", ["platform-admins"], null)
+}
