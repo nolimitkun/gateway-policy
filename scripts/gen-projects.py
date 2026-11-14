@@ -22,10 +22,11 @@ that span files:
 Agents (agents/*.yaml, checked against agents/schema.json) belong to a project
 and narrow it: their keys are added to the project, which maps each to its
 agent (agent_keys), and OPA gives a call with such a key the agent's models and
-tools. A kagent agent must also be wired to its own key (kagent-values.yaml
-modelConfigRef, a ModelConfig in kagent-resources.yaml extraObjects, and its secret
-in vaultSecrets as a copy of the agent's key: the entry's gatewayKey one of the
-agent's keys, its field the record's).
+tools. A kagent agent must also be wired to its own key: kagent-values.yaml
+modelConfigRef names a ModelConfig in kagent-resources.yaml extraObjects, whose
+apiKeySecret and apiKeySecretKey are a vaultSecrets copy of one of the agent's keys
+(an entry {name, gatewayKey, field}). The deployment repo says where the key goes;
+the record says only which keys the agent has.
 
 Outputs, read by OPA from the gateway-projects bundle (policies/gateway-projects,
 separate from the policy bundle so a project change never rebuilds the Rego):
@@ -251,26 +252,22 @@ def load_agents(projects, exceptions, catalog_models, key_owner, errors):
             p["agent_keys"][key_id] = aid
 
         runtime = doc["runtime"]
-        secret = doc.get("secret")
-        if runtime["kind"] == "kagent" and not secret:
-            errors.append(f"{rel(path)}: a kagent agent needs secret")
-        elif runtime["kind"] == "kagent" and wiring:
-            # The kagent agent must read this key: its own ModelConfig, naming
-            # the agent's secret, which VSO mirrors into the namespace.
+        if runtime["kind"] == "kagent" and wiring:
+            # The kagent agent must read one of its own keys: its ModelConfig names a
+            # Secret and field that a vaultSecrets entry copies from one of them.
             ref = ((kagent_values.get(runtime["name"]) or {}).get("modelConfigRef")) or ""
-            entry = kagent_secrets.get(secret["name"])
-            if entry is None:
-                errors.append(f"{rel(path)}: secret {secret['name']} is not in {KAGENT_RESOURCES.name} vaultSecrets")
-            elif isinstance(entry, dict) and entry.get("gatewayKey") not in doc["keys"]:
-                errors.append(f"{rel(path)}: {KAGENT_RESOURCES.name} vaultSecrets {secret['name']} copies key "
-                              f"{entry.get('gatewayKey')!r}, not one of the agent's keys {doc['keys']}")
-            elif isinstance(entry, dict) and entry.get("field") != secret["field"]:
-                errors.append(f"{rel(path)}: {KAGENT_RESOURCES.name} vaultSecrets {secret['name']} has field "
-                              f"{entry.get('field')!r}, the record {secret['field']!r}")
             if ref not in model_configs:
                 errors.append(f"{rel(path)}: {KAGENT_VALUES.name} {runtime['name']}.modelConfigRef must name a ModelConfig in {KAGENT_RESOURCES.name} extraObjects")
-            elif secret and model_configs[ref].get("apiKeySecret") != secret["name"]:
-                errors.append(f"{rel(path)}: ModelConfig {ref} must read secret {secret['name']}")
+            else:
+                name, field = model_configs[ref].get("apiKeySecret"), model_configs[ref].get("apiKeySecretKey")
+                entry = kagent_secrets.get(name)
+                if not isinstance(entry, dict) or entry.get("gatewayKey") not in doc["keys"]:
+                    errors.append(f"{rel(path)}: ModelConfig {ref} reads secret {name!r}, which {KAGENT_RESOURCES.name} "
+                                  f"vaultSecrets must list as a copy of one of the agent's keys {doc['keys']} "
+                                  f"(name, gatewayKey, field)")
+                elif entry.get("field") != field:
+                    errors.append(f"{rel(path)}: ModelConfig {ref} reads field {field!r} of {name}, "
+                                  f"the copy writes {entry.get('field')!r}")
 
         agents[aid] = {
             "project": pid,
@@ -281,7 +278,6 @@ def load_agents(projects, exceptions, catalog_models, key_owner, errors):
             "models_allow": allow,
             "mcp_tools": tools,
             "keys": doc["keys"],
-            "secret": secret,
         }
     return agents
 
@@ -339,8 +335,7 @@ def main():
         return 0
 
     outputs = {REGISTRY_OUT: registry_catalog(agents)}
-    policy_agents = {aid: {k: v for k, v in a.items() if k != "secret"} for aid, a in agents.items()}
-    for out, entries in ((PROJECTS_OUT, projects), (EXCEPTIONS_OUT, exceptions), (AGENTS_OUT, policy_agents)):
+    for out, entries in ((PROJECTS_OUT, projects), (EXCEPTIONS_OUT, exceptions), (AGENTS_OUT, agents)):
         for pid, entry in entries.items():
             outputs[out / pid / "data.json"] = json.dumps(entry, indent=2, sort_keys=True) + "\n"
     # Per-project files no project produces any more (a removed project).

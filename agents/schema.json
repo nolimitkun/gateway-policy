@@ -35,13 +35,6 @@
         "allow": {"description": "Patterns over model names; the agent may use a model the project may use that one of them matches. Absent: the project's models.", "type": "array", "minItems": 1, "items": {"type": "string"}}
       }
     },
-    "mcp_tools": {"description": "Patterns over prefixed MCP tool names. A tool call needs a match here and in the project's mcp_tools. Absent: none.", "type": "array", "items": {"type": "string"}},
-    "secret": {
-      "description": "Where the agent's runtime reads its key: the Secret's name and the field. The deployment repo makes it a VSO copy of one of the agent's keys out of the registry's agentgateway-client-keys map in Vault (vaultSecrets: name, gatewayKey, field).",
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["name", "field"],
-      "properties": {"name": {"type": "string"}, "field": {"type": "string"}}
-    }
+    "mcp_tools": {"description": "Patterns over prefixed MCP tool names. A tool call needs a match here and in the project's mcp_tools. Absent: none.", "type": "array", "items": {"type": "string"}}
   }
 }
