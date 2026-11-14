@@ -13,9 +13,11 @@ OPA gave. Run it before merging a policy change: every flipped verdict is a
 request that would now be treated differently. Exit code 1 if any verdict
 flips. (The registry replays every policy change again before its approval.)
 
-Decisions logged before log_mask.rego kept the model and MCP tool name (the
-whole body was dropped then) can't be replayed and are skipped, as are
-decisions for other rules than --rule.
+A decision whose body the log mask dropped can't be replayed and is skipped:
+one logged before log_mask.rego kept the model and MCP tool name, or a body
+that isn't an object (a JSON-RPC batch). A request without a body (a GET,
+whose empty body is dropped too) replays as it was. Decisions for other rules
+than --rule are skipped as well.
 
 Needs kubectl access to the cluster (it port-forwards svc/loki, and asks the
 project registry's pod for the data bundle) unless --loki and --data are given,
@@ -142,13 +144,15 @@ def main():
     for e in events:
         if e.get("path") != args.rule or "input" not in e or "result" not in e:
             skipped_rule += 1
-        elif "/input/parsed_body" in (e.get("erased") or []):
+        elif "/input/parsed_body" in (e.get("erased") or []) and (
+                e["input"].get("attributes", {}).get("request", {}).get("http", {}).get("method", "").upper()
+                not in ("GET", "HEAD", "DELETE", "OPTIONS")):
             skipped_old += 1
         else:
             replayable.append(e)
 
     print(f"read {len(events)} decisions; replaying {len(replayable)} "
-          f"(skipped: {skipped_rule} other rules, {skipped_old} logged before the model was kept)")
+          f"(skipped: {skipped_rule} other rules, {skipped_old} whose body was not kept)")
     if not replayable:
         return 0
 
