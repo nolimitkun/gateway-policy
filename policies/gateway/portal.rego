@@ -2,7 +2,8 @@
 # docs/project-registry.md "Approval rules are policy"). The registry asks for
 # data.portal.required_approvals with the change as input:
 #
-#   input.change   {kind: project | agent | exception | policy, object_id,
+#   input.change   {kind: project | agent | exception | policy | model | google_api |
+#                   tool | catalog, object_id,
 #                   op: create | update | delete, before, after}
 #                   before / after: the record (projects/schema.json, agents/schema.json,
 #                   or an exception entry); for a policy change (a commit
@@ -124,6 +125,45 @@ required_approvals contains "security" if {
 	autonomy_rank[after.autonomy] > autonomy_rank[object.get(before, "autonomy", "read-only")]
 }
 
+# --- the catalog: models, Google APIs, MCP tools and the catalog's settings ---
+# The platform team approves every catalog change; security what widens where data
+# goes or what a tool may do; the cost owner a price.
+catalog_kinds := {"model", "google_api", "tool", "catalog"}
+
+required_approvals contains "platform" if change.kind in catalog_kinds
+
+# A model's or a Google API's placement, a new one, or a model's provider settings
+# (where calls go).
+required_approvals contains "security" if {
+	change.kind in {"model", "google_api"}
+	change.op != "delete"
+	object.remove(before, ["price"]) != object.remove(after, ["price"])
+}
+
+required_approvals contains "cost_owner" if {
+	change.kind == "model"
+	change.op != "delete"
+	object.get(before, "price", null) != after.price
+}
+
+# A tool less risky than before (or a new one other than irreversible).
+risk_rank := {"read": 0, "write": 1, "irreversible": 2}
+
+required_approvals contains "security" if {
+	change.kind == "tool"
+	change.op != "delete"
+	risk_rank[after.risk] < risk_rank[object.get(before, "risk", "irreversible")]
+}
+
+# The settings: the MCP targets and the serving namespaces (a path under one skips the
+# model allowlist for projects with deployments: true) widen access; the task classes
+# only pick among models a project may use already.
+required_approvals contains "security" if {
+	change.kind == "catalog"
+	change.op != "delete"
+	object.remove(before, ["tasks"]) != object.remove(after, ["tasks"])
+}
+
 # --- who may propose a change (approval, above, is a separate question) ---
 # The registry asks data.portal.may_submit with input.change, input.requester,
 # input.groups (the requester's Keycloak groups) and input.owner_group (the
@@ -138,8 +178,10 @@ may_submit if {
 	change.op == "create"
 }
 
-# Otherwise the project's owners, for the project and its agents and exceptions,
+# Otherwise the project's owners, for the project and its agents and exceptions
+# (not the catalog: it has no owner group),
 may_submit if {
+	not change.kind in catalog_kinds
 	input.owner_group
 	input.owner_group in input.groups
 }

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# CI for the gateway policy: the generated catalog files are current, the test
-# records render (schemas, cross-file rules), the Rego passes opa check, fmt and
+# CI for the gateway policy: the test records (projects and the catalog) render (schemas, cross-file rules), the Rego passes opa check, fmt and
 # test with them, and both bundles build and load together.
 #   needs: python3 with jsonschema and pyyaml, opa, helm
 set -euo pipefail
@@ -9,23 +8,24 @@ fail=0
 ok() { echo "  ok   $*"; }
 bad() { echo "  FAIL $*"; fail=1; }
 
-echo "==> catalog (catalog/models.yaml, catalog/tools.yaml)"
-if python3 scripts/gen-catalog.py --check; then ok "catalog valid, generated files current"; else bad "catalog (run: python3 scripts/gen-catalog.py)"; fi
-
-echo "==> gateway-models chart, with the catalog"
-# What the project registry packages and Argo CD installs: it must render with the
-# generated catalog as its values (the gateway's own values have defaults).
-if helm template gateway-models charts/gateway-models -n mini-platform -f generated/agentgateway-catalog.yaml >/dev/null; then
-  ok "chart renders"
-else
-  bad "chart (helm template charts/gateway-models -f generated/agentgateway-catalog.yaml)"
-fi
-
-echo "==> project data (fixtures/records.yaml, rendered)"
+echo "==> records (fixtures/records.yaml: projects and the catalog), rendered"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 data="$tmp/gateway-projects"
-if python3 scripts/render-records.py fixtures/records.yaml --out "$data"; then ok "records render"; else bad "records"; fi
+if python3 scripts/render-records.py fixtures/records.yaml --out "$data" --catalog-values "$tmp/catalog.yaml"; then
+  ok "records render (gen-catalog.py, gen-projects.py)"
+else
+  bad "records"
+fi
+
+echo "==> gateway-models chart, with the rendered catalog"
+# What the project registry packages and Argo CD installs (the gateway's own values
+# have defaults).
+if helm template gateway-models charts/gateway-models -n mini-platform -f "$tmp/catalog.yaml" >/dev/null; then
+  ok "chart renders"
+else
+  bad "chart (helm template charts/gateway-models with the rendered catalog)"
+fi
 
 echo "==> opa"
 if opa check --strict policies/gateway >/dev/null; then ok "opa check"; else bad "opa check policies/gateway"; fi

@@ -2,11 +2,13 @@
 """Render a set of project registry records with scripts/gen-projects.py.
 
     python3 scripts/render-records.py RECORDS --out DIR   the gateway-projects bundle directory
+          [--catalog-values FILE]                          and the gateway-models chart's catalog values
     python3 scripts/render-records.py RECORDS --keys      "<key_id> <project>" per API key
     python3 scripts/render-records.py RECORDS --mirrors   "<secret> <field> <key_id>" per agent
 
 RECORDS is a file in the format of the registry's GET /export (YAML or JSON):
-{"project": {id: spec}, "agent": {id: spec}, "exception": {project: entry}}, e.g.
+{"project": {id: spec}, "agent": {id: spec}, "exception": {project: entry}, "model",
+"google_api", "tool": {id: spec}, "catalog": {"settings": {...}}}, e.g.
 the deployment repo's seed, or fixtures/records.yaml here. The project registry
 holds the records; this repo keeps only their schema and the renderer. The
 registry does the same thing (registry/render.py): it writes the records as the
@@ -36,6 +38,7 @@ def main() -> int:
     mode.add_argument("--out", type=Path, help="write the bundle directory here (replaced)")
     mode.add_argument("--keys", action="store_true")
     mode.add_argument("--mirrors", action="store_true")
+    p.add_argument("--catalog-values", type=Path, help="with --out: also write the gateway-models chart's values")
     a = p.parse_args()
     records = yaml.safe_load(a.records.read_text()) or {}
     with tempfile.TemporaryDirectory() as tmp:
@@ -51,6 +54,12 @@ def main() -> int:
         if records.get("exception"):
             (work / "projects" / "_exceptions.yaml").write_text(
                 yaml.safe_dump({"exceptions": records["exception"]}, sort_keys=False))
+        write_catalog(work, records)
+        cat = subprocess.run([sys.executable, str(work / "scripts" / "gen-catalog.py")], cwd=work,
+                             capture_output=True, text=True)
+        if cat.returncode != 0:
+            sys.stderr.write(cat.stderr or cat.stdout)
+            return 1
         flag = ["--keys"] if a.keys else ["--mirrors"] if a.mirrors else []
         run = subprocess.run([sys.executable, str(work / "scripts" / "gen-projects.py"), *flag], cwd=work,
                              capture_output=True, text=True)
@@ -63,7 +72,24 @@ def main() -> int:
         if a.out.exists():
             shutil.rmtree(a.out)
         shutil.copytree(work / "policies" / "gateway-projects", a.out)
+        if a.catalog_values:
+            shutil.copyfile(work / "generated" / "agentgateway-catalog.yaml", a.catalog_values)
     return 0
+
+
+def write_catalog(work: Path, records: dict) -> None:
+    """The catalog records as the files gen-catalog.py reads (the project registry does the
+    same, registry/render.py write_catalog)."""
+    settings = (records.get("catalog") or {}).get("settings") or {}
+    (work / "catalog").mkdir(exist_ok=True)
+    (work / "catalog" / "models.yaml").write_text(yaml.safe_dump({
+        "servingNamespaces": settings.get("servingNamespaces") or [],
+        "models": records.get("model") or {},
+        "tasks": settings.get("tasks") or {},
+        "googleApis": records.get("google_api") or {}}, sort_keys=False))
+    (work / "catalog" / "tools.yaml").write_text(yaml.safe_dump({
+        "targets": settings.get("targets") or [],
+        "tools": records.get("tool") or {}}, sort_keys=False))
 
 
 if __name__ == "__main__":

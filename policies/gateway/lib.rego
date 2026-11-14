@@ -5,6 +5,10 @@ package gateway.lib
 
 import rego.v1
 
+# The catalog: the project registry's records (models, Google APIs, MCP tools,
+# the settings), in the gateway-projects bundle.
+catalog := data.registry.catalog
+
 # The project's placements, capped by its data class even if the generated
 # data says otherwise.
 placements(project_id) := {p |
@@ -18,7 +22,7 @@ placements(project_id) := {p |
 allowed(project_id) := by_rule(project_id) | by_exception(project_id)
 
 by_rule(project_id) := {m |
-	some m, model in data.catalog.models
+	some m, model in catalog.models
 	model.placement in placements(project_id)
 	some pattern in data.projects[project_id].models_allow
 

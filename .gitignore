@@ -6,3 +6,6 @@ __pycache__/
 /policies/gateway-projects/exceptions/
 /policies/gateway-projects/agents/
 /generated/agentregistry-agents.yaml
+/catalog/*.yaml
+/generated/
+/policies/gateway-projects/registry/
