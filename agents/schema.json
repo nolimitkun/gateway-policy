@@ -37,7 +37,7 @@
     },
     "mcp_tools": {"description": "Patterns over prefixed MCP tool names. A tool call needs a match here and in the project's mcp_tools. Absent: none.", "type": "array", "items": {"type": "string"}},
     "secret": {
-      "description": "Where the agent's runtime reads its key: the Secret's name and the field. The deployment repo makes it a VSO copy of one of the agent's keys out of the registry's agentgateway-client-keys map in Vault (vaultSecrets: name, gatewayKey, field).",
+      "description": "Deprecated and ignored: where the agent's key goes is the deployment repo's (a vaultSecrets copy: name, gatewayKey, field). Removed once no record has it.",
       "type": "object",
       "additionalProperties": false,
       "required": ["name", "field"],

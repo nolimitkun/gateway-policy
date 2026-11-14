@@ -22,9 +22,6 @@ agent:
     runtime:
       kind: holmes
       name: holmes
-    secret:
-      field: AGENTGATEWAY_API_KEY
-      name: holmes-agentgateway
   kagent-helm-agent:
     agent: kagent-helm-agent
     autonomy: autonomous
@@ -39,9 +36,6 @@ agent:
     runtime:
       kind: kagent
       name: helm-agent
-    secret:
-      field: OPENAI_API_KEY
-      name: kagent-helm-agent-agentgateway
   kagent-k8s-agent:
     agent: kagent-k8s-agent
     autonomy: autonomous
@@ -56,9 +50,6 @@ agent:
     runtime:
       kind: kagent
       name: k8s-agent
-    secret:
-      field: OPENAI_API_KEY
-      name: kagent-k8s-agent-agentgateway
   kagent-observability-agent:
     agent: kagent-observability-agent
     autonomy: read-only
@@ -73,9 +64,6 @@ agent:
     runtime:
       kind: kagent
       name: observability-agent
-    secret:
-      field: OPENAI_API_KEY
-      name: kagent-observability-agent-agentgateway
   kagent-promql-agent:
     agent: kagent-promql-agent
     autonomy: read-only
@@ -90,9 +78,6 @@ agent:
     runtime:
       kind: kagent
       name: promql-agent
-    secret:
-      field: OPENAI_API_KEY
-      name: kagent-promql-agent-agentgateway
 catalog:
   settings:
     servingNamespaces:
