@@ -2,7 +2,7 @@
 # CI for the gateway policy: the generated catalog files are current, the test
 # records render (schemas, cross-file rules), the Rego passes opa check, fmt and
 # test with them, and both bundles build and load together.
-#   needs: python3 with jsonschema and pyyaml, opa
+#   needs: python3 with jsonschema and pyyaml, opa, helm
 set -euo pipefail
 cd "$(dirname "$0")/.."
 fail=0
@@ -11,6 +11,15 @@ bad() { echo "  FAIL $*"; fail=1; }
 
 echo "==> catalog (catalog/models.yaml, catalog/tools.yaml)"
 if python3 scripts/gen-catalog.py --check; then ok "catalog valid, generated files current"; else bad "catalog (run: python3 scripts/gen-catalog.py)"; fi
+
+echo "==> gateway-models chart, with the catalog"
+# What the project registry packages and Argo CD installs: it must render with the
+# generated catalog as its values (the gateway's own values have defaults).
+if helm template gateway-models charts/gateway-models -n mini-platform -f generated/agentgateway-catalog.yaml >/dev/null; then
+  ok "chart renders"
+else
+  bad "chart (helm template charts/gateway-models -f generated/agentgateway-catalog.yaml)"
+fi
 
 echo "==> project data (fixtures/records.yaml, rendered)"
 tmp="$(mktemp -d)"
