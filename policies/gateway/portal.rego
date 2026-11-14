@@ -155,10 +155,13 @@ required_approvals contains "security" if {
 	risk_rank[after.risk] < risk_rank[object.get(before, "risk", "irreversible")]
 }
 
-# The settings: MCP targets, serving namespaces and task classes.
+# The settings: the MCP targets and the serving namespaces (a path under one skips the
+# model allowlist for projects with deployments: true) widen access; the task classes
+# only pick among models a project may use already.
 required_approvals contains "security" if {
 	change.kind == "catalog"
-	before.targets != after.targets
+	change.op != "delete"
+	object.remove(before, ["tasks"]) != object.remove(after, ["tasks"])
 }
 
 # --- who may propose a change (approval, above, is a separate question) ---

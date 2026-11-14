@@ -94,6 +94,8 @@ test_a_catalog_change_needs_the_platform_team_and_more_for_what_it_widens if {
 	roles("tool", "update", {"risk": "read"}, {"risk": "write"}) == {"platform"}
 	roles("tool", "create", null, {"risk": "irreversible"}) == {"platform"}
 	roles("catalog", "update", {"targets": ["a"]}, {"targets": ["a", "b"]}) == {"platform", "security"}
+	roles("catalog", "update", {"servingNamespaces": ["a"]}, {"servingNamespaces": ["a", "v1"]}) == {"platform", "security"}
+	roles("catalog", "update", {"tasks": ["a"], "targets": ["t"]}, {"tasks": ["a", "b"], "targets": ["t"]}) == {"platform"}
 }
 
 test_only_the_platform_team_proposes_catalog_changes if {
