@@ -3,6 +3,7 @@ package gateway.authz_test
 import rego.v1
 
 import data.gateway.authz
+import data.gateway.lib
 
 # A request with the project's main key (key id = project id).
 req(project, path, body) := req_key(project, project, path, body)
@@ -136,11 +137,11 @@ test_mcp_needs_an_entry if {
 # Every model and Google API in the catalog has a placement some class allows,
 # so nothing is routable but unusable by every project.
 test_catalog_entries_usable_by_some_class if {
-	every m in data.catalog.models {
+	every m in lib.catalog.models {
 		some placements in data.gateway.classes
 		m.placement in placements
 	}
-	every a in data.catalog.google_apis {
+	every a in lib.catalog.google_apis {
 		some placements in data.gateway.classes
 		a.placement in placements
 	}
@@ -309,7 +310,7 @@ test_project_key_unaffected_by_tool_risk if {
 
 # The catalog's classes are the three the policy knows.
 test_catalog_tool_risks_are_known if {
-	every _, risk in data.catalog.tools {
+	every _, risk in lib.catalog.tools {
 		risk in {"read", "write", "irreversible"}
 	}
 }

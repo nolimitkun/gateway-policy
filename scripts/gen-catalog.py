@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
-"""Validate catalog/models.yaml and catalog/tools.yaml and generate the files derived from them.
+"""Validate the catalog and render what is derived from it.
 
-    python3 scripts/gen-catalog.py           write the generated files
-    python3 scripts/gen-catalog.py --check   fail if they are out of date (CI)
+The catalog (every model, Google API and MCP tool, and its settings) lives in the
+project registry as records. The registry (and scripts/render-records.py) writes them as
+this script's input files, catalog/models.yaml and catalog/tools.yaml, in a copy of this
+repo, and runs it there:
+
+    python3 scripts/gen-catalog.py
 
 Outputs:
   generated/agentgateway-catalog.yaml
       the values of charts/gateway-models (catalog: ...): one entry per model
       with its provider settings, the Google API routes, and the task class
-      names (one "auto-<task>" virtual model each). The project registry
-      packages the chart with it once the commit's policy change is approved.
-  policies/gateway/catalog/data.json
-      what the gateway policy needs, as data.catalog: each model's placement,
-      provider and price, each Google API's placement, the task classes, and
-      each MCP tool's risk (catalog/tools.yaml). No endpoints or secret names.
+      names (one "auto-<task>" virtual model each). The registry packages the
+      chart with it.
+  policies/gateway-projects/registry/catalog/data.json
+      what the policy needs, as data.registry.catalog in the gateway-projects
+      bundle: each model's placement, provider and price, each Google API's
+      placement, the task classes, and each MCP tool's risk. No endpoints or
+      secret names.
 """
 
 import argparse
@@ -29,9 +34,7 @@ SOURCE = ROOT / "catalog" / "models.yaml"
 TOOLS = ROOT / "catalog" / "tools.yaml"
 RISKS = {"read", "write", "irreversible"}
 GATEWAY_OUT = ROOT / "generated" / "agentgateway-catalog.yaml"
-POLICY_OUT = ROOT / "policies" / "gateway" / "catalog" / "data.json"
-# The same data in the gateway-projects bundle, as data.registry.catalog: the project
-# registry renders it from its catalog records, and the policy reads it first (lib.rego).
+# The catalog in the gateway-projects bundle, as data.registry.catalog.
 REGISTRY_OUT = ROOT / "policies" / "gateway-projects" / "registry" / "catalog" / "data.json"
 
 PLACEMENTS = {"onprem", "gcp", "external"}
@@ -200,16 +203,12 @@ def render(catalog, tool_risks):
               "# The values of charts/gateway-models, which the project registry packages.\n")
     return {
         GATEWAY_OUT: header + yaml.safe_dump({"catalog": gateway}, sort_keys=False, width=200),
-        POLICY_OUT: json.dumps(policy, indent=2, sort_keys=True) + "\n",
         REGISTRY_OUT: json.dumps(policy, indent=2, sort_keys=True) + "\n",
     }
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--check", action="store_true", help="fail if a generated file is out of date")
-    args = parser.parse_args()
-
+    argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter).parse_args()
     catalog = yaml.safe_load(SOURCE.read_text())
     errors = [f"{SOURCE.relative_to(ROOT)}: {e}" for e in validate(catalog)]
     tool_errors, tool_risks = validate_tools(yaml.safe_load(TOOLS.read_text()))
@@ -218,20 +217,10 @@ def main():
         for e in errors:
             print(e, file=sys.stderr)
         return 1
-
-    stale = []
     for path, content in render(catalog, tool_risks).items():
-        rel = path.relative_to(ROOT)
-        if args.check:
-            if not path.exists() or path.read_text() != content:
-                stale.append(str(rel))
-        else:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content)
-            print(f"wrote {rel}")
-    if stale:
-        print("out of date (run: python3 scripts/gen-catalog.py): " + ", ".join(stale), file=sys.stderr)
-        return 1
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        print(f"wrote {path.relative_to(ROOT)}")
     return 0
 
 

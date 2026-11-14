@@ -7,7 +7,7 @@
 # Every API key belongs to a project (the project registry's records, rendered
 # into data.projects by scripts/gen-projects.py). A project has a data class, which
 # caps the placements it may use (mini-cloud docs/gcp/ai-inference.md); each
-# model or Google API has one placement (data.catalog, from catalog/models.yaml).
+# model or Google API has one placement (lib.catalog: the project registry's catalog).
 # Anything not explicitly allowed is denied.
 package gateway.authz
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare the MCP tools behind the gateway with catalog/tools.yaml.
+"""Compare the MCP tools behind the gateway with the catalog's tools in the project registry.
 
     python3 scripts/tools-drift.py                 through kubectl port-forward
     python3 scripts/tools-drift.py --gateway http://agentgateway.test
@@ -8,16 +8,17 @@ Lists the tools the gateway's merged /mcp endpoint announces, with the admin
 project's key, and reports:
 
   new        announced, not in the catalog: agents can't call it (it counts as
-             irreversible) until someone classifies it
+             irreversible) until someone classifies it (a tool record)
   removed    in the catalog, no longer announced
   changed    its description or input schema changed since it was classified
              (fingerprint): check the risk still holds, then update it
 
-Exit code 1 on any drift. For a new or changed tool the line to put in
-catalog/tools.yaml is printed with its current fingerprint and the risk left
-for you to fill in.
+Exit code 1 on any drift. For a new or changed tool the record to propose in the
+registry (POST or PATCH /tools/<name>) is printed with its current fingerprint and
+the risk left for you to fill in.
 
-Needs kubectl access to the cluster: the key comes from the
+Needs kubectl access to the cluster: the catalog's tools come from the registry's
+pod (or --tools, a file in the format of its /export), the key from the
 agentgateway-api-keys Secret, and without --gateway the endpoint is reached
 through a port-forward to svc/agentgateway-proxy.
 """
@@ -37,7 +38,21 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-CATALOG = ROOT / "catalog" / "tools.yaml"
+READ_TOOLS = """
+import json, os
+from registry import db
+with db.DB(os.environ["DATABASE_URL"]).tx() as c:
+    print(json.dumps({r["id"]: r["spec"] for r in c.execute("select id, spec from resource where kind = 'tool'")}))
+"""
+
+
+def registry_tools():
+    """The catalog's tool records, read in the project registry's pod (its database)."""
+    out = subprocess.run(["kubectl", "-n", NAMESPACE, "exec", "deploy/project-registry", "--", "python", "-c", READ_TOOLS],
+                         capture_output=True, text=True)
+    if out.returncode != 0:
+        sys.exit(f"could not read the tools from the project registry: {out.stderr[-500:]}")
+    return json.loads(out.stdout)
 NAMESPACE = "mini-platform"
 
 
@@ -125,9 +140,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--gateway", help="gateway base URL; default: kubectl port-forward svc/agentgateway-proxy")
     parser.add_argument("--key-id", default="admin", help="key id to list tools with (needs mcp_tools: ['*'])")
+    parser.add_argument("--tools", type=Path, help="records file (the registry's /export format); default: the registry")
     args = parser.parse_args()
 
-    catalog = (yaml.safe_load(CATALOG.read_text()) or {}).get("tools") or {}
+    catalog = ((yaml.safe_load(args.tools.read_text()) or {}).get("tool") or {}) if args.tools else registry_tools()
     with gateway_url(args.gateway) as url:
         live = list_tools(url, gateway_key(args.key_id))
 
@@ -137,7 +153,7 @@ def main():
         n for n in set(live) & set(catalog)
         if catalog[n].get("fingerprint") and catalog[n]["fingerprint"] != fingerprint(live[n])
     )
-    print(f"{len(live)} tools announced, {len(catalog)} in {CATALOG.relative_to(ROOT)}")
+    print(f"{len(live)} tools announced, {len(catalog)} in the catalog")
     for label, names in (("new", new), ("removed", removed), ("changed", changed)):
         print(f"{label}: {len(names)}")
         for n in names:

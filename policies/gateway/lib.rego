@@ -5,13 +5,9 @@ package gateway.lib
 
 import rego.v1
 
-# The catalog: the project registry's records, in the gateway-projects bundle
-# (data.registry.catalog). Until every OPA has that bundle, the copy the policy
-# bundle had (data.catalog): the catalog is moving from here to the registry,
-# and either bundle may load first.
-catalog := data.registry.catalog if {
-	data.registry.catalog
-} else := data.catalog
+# The catalog: the project registry's records (models, Google APIs, MCP tools,
+# the settings), in the gateway-projects bundle.
+catalog := data.registry.catalog
 
 # The project's placements, capped by its data class even if the generated
 # data says otherwise.
