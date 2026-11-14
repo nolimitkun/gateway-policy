@@ -281,8 +281,7 @@ the project sets no limit.
 |--------|------|-------|
 | Project change | registry change approved → publisher (batches every 30 s, renders, replays, signs) → OPA poll (10–30 s) | under 1 min (measured: active everywhere 9 s after approval) |
 | Catalog or Rego change | merge → the registry files a policy change within a minute (opa test, build, sign, replay) → approval → publisher → OPA poll (10–30 s) | the approval, plus under 1 min |
-| Revoke a key | drop its id from the project in the registry | the same as a project change |
-| Remove a key from Vault | bootstrap → VSO refresh → gateway reload | VSO interval (1 min) |
+| New or revoked key | the key id added to or dropped from a project or agent in the registry → the publisher writes Vault's key maps → VSO refresh → gateway reload | the project change, plus the VSO interval (1 min) |
 | New model routes or `auto` models | merge → Argo CD sync of `agentgateway-config` | sync |
 | Limits and budgets | with the project data bundle: OPA returns them, the gateway sends them as `limitOverride` | as a project change; no restart |
 | Alert thresholds | merge → Argo CD sync of `prometheus` (config reload) | sync |
@@ -383,8 +382,7 @@ build.** Bundle roots follow the layout: a top-level `data.json` makes the roots
   `RESOURCE_EXHAUSTED` under light load, which needs a quota check for
   `mini-cloud-499820` in `eu`.
 - **Time to first token** needs streaming traffic before `fastest` can use it.
-- **A key service:** keys are created by the bootstrap script. Self-service key
-  issue and rotation for 200 projects needs a small service or portal that
-  writes to Git and Vault. The next step, a project registry with OAuth
-  clients instead of keys and without OCP, is designed in
-  [project-registry.md](https://github.com/nolimitkun/project-registry/blob/main/docs/design.md).
+- **Keys:** the project registry issues and revokes them (its publisher writes
+  Vault's key maps from the records); rotating a key in place, and OAuth clients
+  instead of keys, are not done yet
+  ([design](https://github.com/nolimitkun/project-registry/blob/main/docs/design.md)).
