@@ -24,7 +24,7 @@ project := data.projects[project_id]
 allowed := lib.scoped(project_id, object.get(input, "key_id", ""))
 
 # What a request costs, blended at three input tokens to one output token, in
-# USD per million tokens (catalog/models.yaml prices).
+# USD per million tokens (the catalog's prices: the registry's model records).
 blended_price(m) := ((3 * p.input) + p.output) / 4 if p := lib.catalog.models[m].price
 
 # Median request duration from the gateway's metrics (rankings.rego). Unranked

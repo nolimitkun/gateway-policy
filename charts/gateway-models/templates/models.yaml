@@ -1,7 +1,7 @@
 {{- $v := .Values }}
-{{- /* Models come from the catalog (catalog/models.yaml), through
-     generated/agentgateway-catalog.yaml, which the project registry puts in this
-     chart's values when it packages it. */}}
+{{- /* Models come from the catalog (the project registry's records, rendered by
+     gen-catalog.py), which the registry puts in this chart's values when it
+     packages it. */}}
 {{- $catalog := .Values.catalog | default dict }}
 {{- if not $catalog.models }}
 {{- fail "catalog.models is empty: the project registry packages this chart with the catalog" }}

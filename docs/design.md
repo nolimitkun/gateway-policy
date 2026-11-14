@@ -10,13 +10,17 @@ and the spike evidence behind each choice. To operate it (adding a project,
 rotating a key, changing a limit), use [agentgateway.md](https://github.com/nolimitkun/mini-platform-deployment/blob/main/docs/agentgateway.md).
 
 > **Since the phase 2 proof of concept** ([project-registry.md](https://github.com/nolimitkun/project-registry/blob/main/docs/design.md)),
-> three things below describe how it was, not how it is: OPA Control Plane no
+> several things below describe how it was, not how it is: OPA Control Plane no
 > longer builds the bundles (the project registry's publisher builds and signs
 > both, each change after an approval); project data lives only in the
 > registry, and `projects/*.yaml` are gone from Git (their schema and
-> `gen-projects.py` remain); and the rate-limit config no longer
-> lists projects, because each project's limits travel with OPA's decision.
-> The table "How long changes take" has the current delays.
+> `gen-projects.py` remain); so does the catalog (`catalog/*.yaml` are gone:
+> models, Google APIs, tools and settings are registry records, rendered into
+> `data.registry.catalog` and the `gateway-models` chart the registry publishes);
+> the registry writes the gateway's API keys to Vault, not the bootstrap script;
+> and the rate-limit config no longer lists projects, because each project's
+> limits travel with OPA's decision. The table "How long changes take" has the
+> current delays.
 
 The target is about **200 projects, each with several API keys**. Each project
 gets its own model policy:
@@ -280,9 +284,10 @@ the project sets no limit.
 | Change | Path | Delay |
 |--------|------|-------|
 | Project change | registry change approved → publisher (batches every 30 s, renders, replays, signs) → OPA poll (10–30 s) | under 1 min (measured: active everywhere 9 s after approval) |
-| Catalog or Rego change | merge → the registry files a policy change within a minute (opa test, build, sign, replay) → approval → publisher → OPA poll (10–30 s) | the approval, plus under 1 min |
+| Rego or chart change | merge → the registry files a policy change within a minute (opa test, build, sign, replay) → approval → publisher → OPA poll (10–30 s) | the approval, plus under 1 min |
+| Catalog change (a model, Google API, tool or setting) | registry change approved → publisher (renders, replays as a report, signs) → OPA poll | the approval, plus under 1 min |
 | New or revoked key | the key id added to or dropped from a project or agent in the registry → the publisher writes Vault's key maps → VSO refresh → gateway reload | the project change, plus the VSO interval (1 min) |
-| New model routes or `auto` models | merge → Argo CD sync of `agentgateway-config` | sync |
+| New model routes or `auto` models | with the catalog or chart change: the registry publishes a new `gateway-models` chart version to MinIO → Argo CD installs it | about 3 min (Argo CD's poll) |
 | Limits and budgets | with the project data bundle: OPA returns them, the gateway sends them as `limitOverride` | as a project change; no restart |
 | Alert thresholds | merge → Argo CD sync of `prometheus` (config reload) | sync |
 | Rankings | Prometheus → OPA cache | ≤ 2 min |
