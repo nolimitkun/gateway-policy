@@ -1,0 +1,21 @@
+{
+  "gateway": {
+    "classes": {
+      "restricted": [
+        "onprem"
+      ],
+      "confidential": [
+        "onprem"
+      ],
+      "internal": [
+        "onprem",
+        "gcp"
+      ],
+      "public": [
+        "onprem",
+        "gcp",
+        "external"
+      ]
+    }
+  }
+}
