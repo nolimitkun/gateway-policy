@@ -15,8 +15,8 @@ flips. (The registry replays every policy change again before its approval.)
 
 A decision whose body the log mask dropped can't be replayed and is skipped:
 one logged before log_mask.rego kept the model and MCP tool name, or a body
-that isn't an object (a JSON-RPC batch). A request without a body (a GET,
-whose empty body is dropped too) replays as it was. Decisions for other rules
+that isn't an object (a JSON-RPC batch). A request that carried no body (a GET
+with no Content-Length, whose empty body is dropped too) replays as it was. Decisions for other rules
 than --rule are skipped as well.
 
 Needs kubectl access to the cluster (it port-forwards svc/loki, and asks the
@@ -114,6 +114,15 @@ def evaluate(inputs, rule, data):
     return [ds[0] if ds else {"allowed": False} for ds in results]
 
 
+def bodiless(http):
+    """A request that carried no body: a method without one, and no Content-Length above 0
+    or Transfer-Encoding (a GET may carry a body, such as a JSON-RPC call to /mcp)."""
+    headers = {k.lower(): v for k, v in (http.get("headers") or {}).items()}
+    length = str(headers.get("content-length", "0")).strip() or "0"
+    return (http.get("method", "").upper() in ("GET", "HEAD", "DELETE", "OPTIONS")
+            and "transfer-encoding" not in headers and length.isdigit() and int(length) == 0)
+
+
 def describe(event):
     i = event["input"]
     meta = i.get("attributes", {}).get("metadataContext", {}).get("filterMetadata", {}).get("agentgateway", {})
@@ -144,9 +153,8 @@ def main():
     for e in events:
         if e.get("path") != args.rule or "input" not in e or "result" not in e:
             skipped_rule += 1
-        elif "/input/parsed_body" in (e.get("erased") or []) and (
-                e["input"].get("attributes", {}).get("request", {}).get("http", {}).get("method", "").upper()
-                not in ("GET", "HEAD", "DELETE", "OPTIONS")):
+        elif "/input/parsed_body" in (e.get("erased") or []) and not bodiless(
+                e["input"].get("attributes", {}).get("request", {}).get("http", {})):
             skipped_old += 1
         else:
             replayable.append(e)
