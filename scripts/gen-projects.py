@@ -2,14 +2,13 @@
 """Validate project registry records and render the gateway policy's project data.
 
 The records live in the project registry, not in this repo. The registry (and
-scripts/render-records.py, for CI and the Vault bootstrap) writes them as the files
+scripts/render-records.py, for CI) writes them as the files
 this script reads, projects/<id>.yaml, projects/_exceptions.yaml and agents/<id>.yaml,
 in a copy of this repo, and runs it there:
 
     python3 scripts/gen-projects.py           write the generated files
-    python3 scripts/gen-projects.py --keys    print "<key_id> <project>" per key
-    python3 scripts/gen-projects.py --mirrors print "<secret> <field> <key_id>" per
-                                              agent whose runtime reads its key
+    python3 scripts/gen-projects.py --keys    print "<key_id> <project>" per key (the
+                                              registry writes the gateway's key maps from it)
 
 Each project file is checked against projects/schema.json, then against rules
 that span files:
@@ -24,8 +23,9 @@ Agents (agents/*.yaml, checked against agents/schema.json) belong to a project
 and narrow it: their keys are added to the project, which maps each to its
 agent (agent_keys), and OPA gives a call with such a key the agent's models and
 tools. A kagent agent must also be wired to its own key (kagent-values.yaml
-modelConfigRef, a ModelConfig in kagent-resources.yaml extraObjects, the secret
-in its vaultSecrets).
+modelConfigRef, a ModelConfig in kagent-resources.yaml extraObjects, and its secret
+in vaultSecrets as a copy of the agent's key: the entry's gatewayKey one of the
+agent's keys, its field the record's).
 
 Outputs, read by OPA from the gateway-projects bundle (policies/gateway-projects,
 separate from the policy bundle so a project change never rebuilds the Rego):
@@ -205,7 +205,9 @@ def load_agents(projects, exceptions, catalog_models, key_owner, errors):
     wiring = bool(KAGENT_VALUES and KAGENT_RESOURCES)
     kagent_values = (yaml.safe_load(KAGENT_VALUES.read_text()) or {}) if wiring else {}
     kagent_resources = (yaml.safe_load(KAGENT_RESOURCES.read_text()) or {}) if wiring else {}
-    kagent_secrets = set(kagent_resources.get("vaultSecrets") or [])
+    # Each entry: a Vault path's name, or a copy of one gateway key ({name, gatewayKey, field}:
+    # VSO picks the key id out of agentgateway-client-keys).
+    kagent_secrets = {(e if isinstance(e, str) else e["name"]): e for e in kagent_resources.get("vaultSecrets") or []}
     model_configs = {
         o["metadata"]["name"]: o.get("spec", {})
         for o in kagent_resources.get("extraObjects") or []
@@ -256,8 +258,15 @@ def load_agents(projects, exceptions, catalog_models, key_owner, errors):
             # The kagent agent must read this key: its own ModelConfig, naming
             # the agent's secret, which VSO mirrors into the namespace.
             ref = ((kagent_values.get(runtime["name"]) or {}).get("modelConfigRef")) or ""
-            if secret["name"] not in kagent_secrets:
+            entry = kagent_secrets.get(secret["name"])
+            if entry is None:
                 errors.append(f"{rel(path)}: secret {secret['name']} is not in {KAGENT_RESOURCES.name} vaultSecrets")
+            elif isinstance(entry, dict) and entry.get("gatewayKey") not in doc["keys"]:
+                errors.append(f"{rel(path)}: {KAGENT_RESOURCES.name} vaultSecrets {secret['name']} copies key "
+                              f"{entry.get('gatewayKey')!r}, not one of the agent's keys {doc['keys']}")
+            elif isinstance(entry, dict) and entry.get("field") != secret["field"]:
+                errors.append(f"{rel(path)}: {KAGENT_RESOURCES.name} vaultSecrets {secret['name']} has field "
+                              f"{entry.get('field')!r}, the record {secret['field']!r}")
             if ref not in model_configs:
                 errors.append(f"{rel(path)}: {KAGENT_VALUES.name} {runtime['name']}.modelConfigRef must name a ModelConfig in {KAGENT_RESOURCES.name} extraObjects")
             elif secret and model_configs[ref].get("apiKeySecret") != secret["name"]:
@@ -315,8 +324,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--keys", action="store_true", help="print one '<key_id> <project>' line per key")
-    mode.add_argument("--mirrors", action="store_true",
-                      help="print one '<secret> <field> <key_id>' line per agent with a secret")
     args = parser.parse_args()
 
     projects, exceptions, agents, errors = load()
@@ -329,12 +336,6 @@ def main():
         for pid, p in sorted(projects.items()):
             for key_id in p["keys"]:
                 print(key_id, pid)
-        return 0
-
-    if args.mirrors:
-        for aid, a in sorted(agents.items()):
-            if a["secret"]:
-                print(a["secret"]["name"], a["secret"]["field"], a["keys"][0])
         return 0
 
     outputs = {REGISTRY_OUT: registry_catalog(agents)}

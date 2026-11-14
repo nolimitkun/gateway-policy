@@ -4,7 +4,6 @@
     python3 scripts/render-records.py RECORDS --out DIR   the gateway-projects bundle directory
           [--catalog-values FILE]                          and the gateway-models chart's catalog values
     python3 scripts/render-records.py RECORDS --keys      "<key_id> <project>" per API key
-    python3 scripts/render-records.py RECORDS --mirrors   "<secret> <field> <key_id>" per agent
 
 RECORDS is a file in the format of the registry's GET /export (YAML or JSON):
 {"project": {id: spec}, "agent": {id: spec}, "exception": {project: entry}, "model",
@@ -16,7 +15,7 @@ files gen-projects.py reads, in a copy of this repo, and runs it there.
 
 Used by CI (scripts/validate.sh: the Rego is tested with the fixture rendered), and
 by the deployment repo: its CI (with KAGENT_VALUES and KAGENT_RESOURCES set, for
-the kagent wiring check) and its Vault bootstrap on a new cluster.
+the kagent wiring check).
 """
 import argparse
 import shutil
@@ -37,7 +36,6 @@ def main() -> int:
     mode = p.add_mutually_exclusive_group(required=True)
     mode.add_argument("--out", type=Path, help="write the bundle directory here (replaced)")
     mode.add_argument("--keys", action="store_true")
-    mode.add_argument("--mirrors", action="store_true")
     p.add_argument("--catalog-values", type=Path, help="with --out: also write the gateway-models chart's values")
     a = p.parse_args()
     records = yaml.safe_load(a.records.read_text()) or {}
@@ -60,7 +58,7 @@ def main() -> int:
         if cat.returncode != 0:
             sys.stderr.write(cat.stderr or cat.stdout)
             return 1
-        flag = ["--keys"] if a.keys else ["--mirrors"] if a.mirrors else []
+        flag = ["--keys"] if a.keys else []
         run = subprocess.run([sys.executable, str(work / "scripts" / "gen-projects.py"), *flag], cwd=work,
                              capture_output=True, text=True)
         if run.returncode != 0:
