@@ -47,6 +47,13 @@ def main() -> int:
             where = ".".join(str(x) for x in e.path) or "(record)"
             errors.append(f"settings/{path.name}: {where}: {e.message}")
         out[sid] = doc
+    # More autonomy never means fewer risks: each level may call what the one below may.
+    levels = ["read-only", "supervised", "autonomous"]
+    auto = out.get("autonomy") if isinstance(out.get("autonomy"), dict) else {}
+    for lower, higher in zip(levels, levels[1:]):
+        if lower in auto and higher in auto and not set(auto[lower]) <= set(auto[higher]):
+            errors.append(f"settings/autonomy.yaml: {higher} must allow at least what {lower} allows "
+                          f"({sorted(set(auto[lower]) - set(auto[higher]))} missing)")
     for sid in sorted(k for k in schema if not k.startswith("$") and k != "description"):
         if sid not in out and not any(e.startswith(f"settings/{sid}.yaml") for e in errors):
             errors.append(f"settings/{sid}.yaml: missing: the policy has no {sid} without it")

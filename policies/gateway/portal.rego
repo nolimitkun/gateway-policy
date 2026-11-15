@@ -132,18 +132,26 @@ triggers contains "exception.set" if {
 	change.op != "delete"
 }
 
+# More autonomy: a higher level, or one the autonomy setting lets call more risks (the
+# setting may give a level any risks, so the order alone doesn't say what an agent gains).
 autonomy_rank := {"read-only": 0, "supervised": 1, "autonomous": 2}
+
+risks(autonomy) := {r | some r in lib.settings.autonomy[autonomy]}
+
+more_autonomy(old, new) if autonomy_rank[new] > autonomy_rank[old]
+
+more_autonomy(old, new) if count(risks(new) - risks(old)) > 0
 
 triggers contains "agent.create_beyond_read_only" if {
 	change.kind == "agent"
 	change.op == "create"
-	after.autonomy != "read-only"
+	more_autonomy("read-only", after.autonomy)
 }
 
 triggers contains "agent.autonomy_raised" if {
 	change.kind == "agent"
 	change.op == "update"
-	autonomy_rank[after.autonomy] > autonomy_rank[object.get(before, "autonomy", "read-only")]
+	more_autonomy(object.get(before, "autonomy", "read-only"), after.autonomy)
 }
 
 # A model's or a Google API's placement, a new one, or a model's provider settings

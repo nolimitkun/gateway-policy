@@ -133,3 +133,18 @@ test_only_the_platform_team_proposes_a_setting if {
 	not portal.may_submit with input as {"change": c, "requester": "o", "groups": ["project-owners"], "owner_group": "project-owners"}
 	portal.may_submit with input as {"change": c, "requester": "a", "groups": ["platform-admins"]}
 }
+
+# The autonomy setting may give a level more risks than the order suggests: what an agent
+# gains is what counts.
+test_moving_an_agent_to_a_level_with_more_risks_needs_security if {
+	odd := {"read-only": ["read"], "supervised": ["read", "write"], "autonomous": ["read"]}
+	agent := {"agent": "a", "project": "p", "autonomy": "autonomous"}
+	r := portal.required_approvals with input as {"change": {"kind": "agent", "object_id": "a", "op": "update", "before": agent, "after": object.union(agent, {"autonomy": "supervised"})}, "requester": "alice"}
+		with data.registry.settings.autonomy as odd
+	r == {"project_owner", "security"}
+
+	# a higher level still counts when its risks are the same (as before the setting)
+	c := portal.required_approvals with input as {"change": {"kind": "agent", "object_id": "a", "op": "create", "before": null, "after": object.union(agent, {"autonomy": "supervised"})}, "requester": "alice"}
+		with data.registry.settings.autonomy as {"read-only": ["read"], "supervised": ["read"], "autonomous": ["read", "write"]}
+	c == {"project_owner", "security"}
+}
