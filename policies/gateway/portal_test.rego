@@ -102,3 +102,49 @@ test_only_the_platform_team_proposes_catalog_changes if {
 	not may("model", "update", ["owners"], "owners")
 	may("model", "update", ["platform-admins"], null)
 }
+
+# --- the approvals setting: reviewers change who approves a trigger, not the floors ---
+no_one := {t: [] | some t in portal.known_triggers}
+
+test_the_approvals_setting_decides_who_approves_a_trigger if {
+	raise := object.union(project, {"limits": {"requests_per_minute": 300}})
+	r := portal.required_approvals with input as {"change": {"kind": "project", "object_id": "p", "op": "update", "before": project, "after": raise}, "requester": "alice"}
+		with data.registry.settings.approvals as object.union(data.registry.settings.approvals, {"project.limit_raised": ["cost_owner", "security"]})
+	r == {"project_owner", "cost_owner", "security"}
+}
+
+any_change(kind, op) := {"change": {"kind": kind, "object_id": "x", "op": op, "before": {}, "after": {}}, "requester": "alice"}
+
+test_an_empty_approvals_setting_keeps_the_floors if {
+	portal.required_approvals == {"project_owner"} with input as any_change("exception", "update")
+		with data.registry.settings.approvals as no_one
+	portal.required_approvals == {"platform"} with input as any_change("project", "create")
+		with data.registry.settings.approvals as no_one
+	portal.required_approvals == {"platform"} with input as any_change("model", "create")
+		with data.registry.settings.approvals as no_one
+	portal.required_approvals == {"platform", "security"} with input as any_change("policy", "update")
+		with data.registry.settings.approvals as no_one
+	portal.required_approvals == {"platform", "security"} with input as any_change("setting", "update")
+		with data.registry.settings.approvals as no_one
+}
+
+test_only_the_platform_team_proposes_a_setting if {
+	c := {"kind": "setting", "object_id": "approvals", "op": "update", "before": {}, "after": {}}
+	not portal.may_submit with input as {"change": c, "requester": "o", "groups": ["project-owners"], "owner_group": "project-owners"}
+	portal.may_submit with input as {"change": c, "requester": "a", "groups": ["platform-admins"]}
+}
+
+# The autonomy setting may give a level more risks than the order suggests: what an agent
+# gains is what counts.
+test_moving_an_agent_to_a_level_with_more_risks_needs_security if {
+	odd := {"read-only": ["read"], "supervised": ["read", "write"], "autonomous": ["read"]}
+	agent := {"agent": "a", "project": "p", "autonomy": "autonomous"}
+	r := portal.required_approvals with input as {"change": {"kind": "agent", "object_id": "a", "op": "update", "before": agent, "after": object.union(agent, {"autonomy": "supervised"})}, "requester": "alice"}
+		with data.registry.settings.autonomy as odd
+	r == {"project_owner", "security"}
+
+	# a higher level still counts when its risks are the same (as before the setting)
+	c := portal.required_approvals with input as {"change": {"kind": "agent", "object_id": "a", "op": "create", "before": null, "after": object.union(agent, {"autonomy": "supervised"})}, "requester": "alice"}
+		with data.registry.settings.autonomy as {"read-only": ["read"], "supervised": ["read"], "autonomous": ["read", "write"]}
+	c == {"project_owner", "security"}
+}

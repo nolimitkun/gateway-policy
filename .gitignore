@@ -9,3 +9,4 @@ __pycache__/
 /catalog/*.yaml
 /generated/
 /policies/gateway-projects/registry/
+/settings/*.yaml

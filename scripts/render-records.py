@@ -7,7 +7,7 @@
 
 RECORDS is a file in the format of the registry's GET /export (YAML or JSON):
 {"project": {id: spec}, "agent": {id: spec}, "exception": {project: entry}, "model",
-"google_api", "tool": {id: spec}, "catalog": {"settings": {...}}}, e.g.
+"google_api", "tool": {id: spec}, "catalog": {"settings": {...}}, "setting": {id: spec}}, e.g.
 the deployment repo's seed, or fixtures/records.yaml here. The project registry
 holds the records; this repo keeps only their schema and the renderer. The
 registry does the same thing (registry/render.py): it writes the records as the
@@ -27,7 +27,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-COPY = ("scripts", "projects", "agents", "catalog", "policies")
+COPY = ("scripts", "projects", "agents", "catalog", "policies", "settings")
 
 
 def main() -> int:
@@ -53,6 +53,13 @@ def main() -> int:
             (work / "projects" / "_exceptions.yaml").write_text(
                 yaml.safe_dump({"exceptions": records["exception"]}, sort_keys=False))
         write_catalog(work, records)
+        for name, spec in (records.get("setting") or {}).items():
+            (work / "settings" / f"{name}.yaml").write_text(yaml.safe_dump(spec, sort_keys=False))
+        st = subprocess.run([sys.executable, str(work / "scripts" / "gen-settings.py")], cwd=work,
+                            capture_output=True, text=True)
+        if st.returncode != 0:
+            sys.stderr.write(st.stderr or st.stdout)
+            return 1
         cat = subprocess.run([sys.executable, str(work / "scripts" / "gen-catalog.py")], cwd=work,
                              capture_output=True, text=True)
         if cat.returncode != 0:

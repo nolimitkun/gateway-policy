@@ -60,7 +60,7 @@ PROJECTS = ROOT / "projects"
 SCHEMA = PROJECTS / "schema.json"
 EXCEPTIONS = PROJECTS / "_exceptions.yaml"
 CATALOG = ROOT / "catalog" / "models.yaml"
-CLASSES = ROOT / "policies" / "gateway" / "data.json"
+SETTINGS_OUT = ROOT / "policies" / "gateway-projects" / "registry" / "settings" / "data.json"   # gen-settings.py
 PROJECTS_BUNDLE = ROOT / "policies" / "gateway-projects"
 PROJECTS_OUT = PROJECTS_BUNDLE / "projects"
 EXCEPTIONS_OUT = PROJECTS_BUNDLE / "exceptions"
@@ -83,7 +83,7 @@ def load():
     validator = jsonschema.Draft202012Validator(schema)
     catalog_models = (yaml.safe_load(CATALOG.read_text()) or {}).get("models") or {}
     models = set(catalog_models)
-    classes = json.loads(CLASSES.read_text())["gateway"]["classes"]
+    classes = json.loads(SETTINGS_OUT.read_text())["data_classes"]
 
     projects, key_owner = {}, {}
     for path in sorted(PROJECTS.glob("*.yaml")):

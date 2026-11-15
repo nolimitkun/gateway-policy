@@ -9,12 +9,18 @@ import rego.v1
 # the settings), in the gateway-projects bundle.
 catalog := data.registry.catalog
 
+# The parameters reviewers decide: the project registry's setting records (data
+# classes, autonomy, approvals), in the gateway-projects bundle.
+settings := data.registry.settings
+
+classes := settings.data_classes
+
 # The project's placements, capped by its data class even if the generated
 # data says otherwise.
 placements(project_id) := {p |
 	project := data.projects[project_id]
 	some p in project.placement
-	p in data.gateway.classes[project.data_class]
+	p in classes[project.data_class]
 }
 
 # Catalog models in one of the project's placements that its models.allow

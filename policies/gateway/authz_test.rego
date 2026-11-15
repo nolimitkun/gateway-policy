@@ -138,11 +138,11 @@ test_mcp_needs_an_entry if {
 # so nothing is routable but unusable by every project.
 test_catalog_entries_usable_by_some_class if {
 	every m in lib.catalog.models {
-		some placements in data.gateway.classes
+		some placements in lib.classes
 		m.placement in placements
 	}
 	every a in lib.catalog.google_apis {
-		some placements in data.gateway.classes
+		some placements in lib.classes
 		a.placement in placements
 	}
 }
@@ -158,7 +158,7 @@ test_placement_read_from_catalog if {
 test_projects_within_their_class if {
 	every p in data.projects {
 		every pl in p.placement {
-			pl in data.gateway.classes[p.data_class]
+			pl in lib.classes[p.data_class]
 		}
 	}
 }
@@ -279,6 +279,15 @@ test_supervised_agent_reads_only if {
 	not authz.allow with input as mcp("holmes", {"method": "tools/call", "params": {"name": "grafana_update_dashboard"}})
 	authz.reason == "tool grafana_update_dashboard is write: agent holmes (supervised) needs a human approval for it" with input as mcp("holmes", {"method": "tools/call", "params": {"name": "grafana_update_dashboard"}})
 	not authz.allow with input as mcp("holmes", {"method": "tools/call", "params": {"name": "grafana_delete_snapshot"}})
+}
+
+# The registry's autonomy setting decides what each autonomy may do.
+test_the_autonomy_setting_decides_what_a_supervised_agent_may_do if {
+	writes := {"read-only": ["read"], "supervised": ["read", "write"], "autonomous": ["read", "write"]}
+	authz.allow with input as mcp("holmes", {"method": "tools/call", "params": {"name": "grafana_update_dashboard"}})
+		with data.registry.settings.autonomy as writes
+	not authz.allow with input as mcp("holmes", {"method": "tools/call", "params": {"name": "grafana_delete_snapshot"}})
+		with data.registry.settings.autonomy as writes
 }
 
 test_autonomous_agent_writes_but_not_irreversible if {
