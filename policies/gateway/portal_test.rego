@@ -104,12 +104,12 @@ test_only_the_platform_team_proposes_catalog_changes if {
 }
 
 # --- the approvals setting: reviewers change who approves a trigger, not the floors ---
-no_one := {t: [] | some t, _ in portal.default_approvals}
+no_one := {t: [] | some t in portal.known_triggers}
 
 test_the_approvals_setting_decides_who_approves_a_trigger if {
 	raise := object.union(project, {"limits": {"requests_per_minute": 300}})
 	r := portal.required_approvals with input as {"change": {"kind": "project", "object_id": "p", "op": "update", "before": project, "after": raise}, "requester": "alice"}
-		with data.registry.settings.approvals as object.union(portal.default_approvals, {"project.limit_raised": ["cost_owner", "security"]})
+		with data.registry.settings.approvals as object.union(data.registry.settings.approvals, {"project.limit_raised": ["cost_owner", "security"]})
 	r == {"project_owner", "cost_owner", "security"}
 }
 

@@ -10,13 +10,10 @@ import rego.v1
 catalog := data.registry.catalog
 
 # The parameters reviewers decide: the project registry's setting records (data
-# classes, autonomy, approvals), in the gateway-projects bundle. Until a registry
-# has them, the values this policy was written with.
-settings := s if {
-	s := data.registry.settings
-} else := {}
+# classes, autonomy, approvals), in the gateway-projects bundle.
+settings := data.registry.settings
 
-classes := object.get(settings, "data_classes", data.gateway.classes)
+classes := settings.data_classes
 
 # The project's placements, capped by its data class even if the generated
 # data says otherwise.

@@ -4,7 +4,7 @@ The policy of [Mini Platform](https://github.com/nolimitkun/mini-platform-deploy
 
 | Path | What |
 |---|---|
-| `policies/gateway/` | the Rego: the decision (`authz.rego`), the model behind `auto` (`select.rego`, `rankings.rego`), what the decision log keeps (`log_mask.rego`), who proposes and who approves a project registry change (`portal.rego`), and their tests. The data classes (`data.json`). This directory is the `gateway-policy` bundle |
+| `policies/gateway/` | the Rego: the decision (`authz.rego`), the model behind `auto` (`select.rego`, `rankings.rego`), what the decision log keeps (`log_mask.rego`), who proposes and who approves a project registry change (`portal.rego`), and their tests. This directory is the `gateway-policy` bundle; the data classes, autonomy and approvals are the registry's setting records |
 | `projects/schema.json`, `agents/schema.json`, `settings/schema.json` | the format of the project registry's project, agent and setting records |
 | `scripts/gen-projects.py` | validates records against the schemas and the rules across them, and renders the `gateway-projects` bundle |
 | `scripts/gen-settings.py` | validates the setting records (the parameters reviewers decide: data classes, autonomy, who approves what) and renders `data.registry.settings` in the `gateway-projects` bundle |

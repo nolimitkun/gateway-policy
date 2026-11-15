@@ -138,11 +138,11 @@ test_mcp_needs_an_entry if {
 # so nothing is routable but unusable by every project.
 test_catalog_entries_usable_by_some_class if {
 	every m in lib.catalog.models {
-		some placements in data.gateway.classes
+		some placements in lib.classes
 		m.placement in placements
 	}
 	every a in lib.catalog.google_apis {
-		some placements in data.gateway.classes
+		some placements in lib.classes
 		a.placement in placements
 	}
 }
@@ -158,7 +158,7 @@ test_placement_read_from_catalog if {
 test_projects_within_their_class if {
 	every p in data.projects {
 		every pl in p.placement {
-			pl in data.gateway.classes[p.data_class]
+			pl in lib.classes[p.data_class]
 		}
 	}
 }

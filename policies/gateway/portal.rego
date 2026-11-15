@@ -62,25 +62,15 @@ floor contains "platform" if change.kind in (catalog_kinds | {"policy", "setting
 
 floor contains "security" if change.kind in {"policy", "setting"}
 
-# --- who approves each trigger: the registry's approvals setting, or these values
-# until it has one ---
-approvals := object.get(lib.settings, "approvals", default_approvals)
+# --- who approves each trigger: the registry's approvals setting ---
+approvals := lib.settings.approvals
 
-# Also what settings/schema.json lists as triggers (scripts/validate.sh checks).
-default_approvals := {
-	"project.create": ["security"],
-	"project.limit_raised": ["cost_owner"],
-	"project.budget_raised": ["cost_owner"],
-	"project.data_class_changed": ["security"],
-	"project.placement_widened": ["security"],
-	"mcp_tools.wildcard_added": ["security"],
-	"exception.set": ["security"],
-	"agent.create_beyond_read_only": ["security"],
-	"agent.autonomy_raised": ["security"],
-	"catalog.route_changed": ["security"],
-	"model.price_changed": ["cost_owner"],
-	"tool.risk_lowered": ["security"],
-	"catalog.access_changed": ["security"],
+# Every trigger below, by name: what settings/schema.json lists (scripts/validate.sh checks).
+known_triggers := {
+	"project.create", "project.limit_raised", "project.budget_raised", "project.data_class_changed",
+	"project.placement_widened", "mcp_tools.wildcard_added", "exception.set",
+	"agent.create_beyond_read_only", "agent.autonomy_raised", "catalog.route_changed",
+	"model.price_changed", "tool.risk_lowered", "catalog.access_changed",
 }
 
 # --- the triggers: what a change does ---
