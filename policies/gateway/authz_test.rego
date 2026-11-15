@@ -281,6 +281,15 @@ test_supervised_agent_reads_only if {
 	not authz.allow with input as mcp("holmes", {"method": "tools/call", "params": {"name": "grafana_delete_snapshot"}})
 }
 
+# The registry's autonomy setting decides what each autonomy may do.
+test_the_autonomy_setting_decides_what_a_supervised_agent_may_do if {
+	writes := {"read-only": ["read"], "supervised": ["read", "write"], "autonomous": ["read", "write"]}
+	authz.allow with input as mcp("holmes", {"method": "tools/call", "params": {"name": "grafana_update_dashboard"}})
+		with data.registry.settings.autonomy as writes
+	not authz.allow with input as mcp("holmes", {"method": "tools/call", "params": {"name": "grafana_delete_snapshot"}})
+		with data.registry.settings.autonomy as writes
+}
+
 test_autonomous_agent_writes_but_not_irreversible if {
 	authz.allow with input as mcp("holmes", {"method": "tools/call", "params": {"name": "grafana_update_dashboard"}})
 		with data.agents.holmes.autonomy as "autonomous"

@@ -5,8 +5,9 @@ The policy of [Mini Platform](https://github.com/nolimitkun/mini-platform-deploy
 | Path | What |
 |---|---|
 | `policies/gateway/` | the Rego: the decision (`authz.rego`), the model behind `auto` (`select.rego`, `rankings.rego`), what the decision log keeps (`log_mask.rego`), who proposes and who approves a project registry change (`portal.rego`), and their tests. The data classes (`data.json`). This directory is the `gateway-policy` bundle |
-| `projects/schema.json`, `agents/schema.json` | the format of the project registry's project and agent records |
+| `projects/schema.json`, `agents/schema.json`, `settings/schema.json` | the format of the project registry's project, agent and setting records |
 | `scripts/gen-projects.py` | validates records against the schemas and the rules across them, and renders the `gateway-projects` bundle |
+| `scripts/gen-settings.py` | validates the setting records (the parameters reviewers decide: data classes, autonomy, who approves what) and renders `data.registry.settings` in the `gateway-projects` bundle |
 | `scripts/gen-catalog.py` | validates the catalog's records (written as `catalog/models.yaml` and `catalog/tools.yaml`) and renders `data.registry.catalog` in the `gateway-projects` bundle and the values of `charts/gateway-models` |
 | `scripts/render-records.py` | renders a file of records (the format of the registry's `/export`) |
 | `scripts/policy-replay.py` | replays recent gateway decisions from Loki against the policy in a checkout |
@@ -18,7 +19,12 @@ The records themselves are not here: the projects, agents and exceptions, and th
 catalog (every model and Google API with its placement, provider settings and price;
 every MCP tool with the most it can do; the task classes behind `auto`, the serving
 namespaces, the MCP targets) live in the [project registry](https://github.com/nolimitkun/project-registry),
-and change there, approved as `portal.rego` says. This repo has the rules, their
+and change there, approved as `portal.rego` says. So do the policy's parameters that
+reviewers decide, as setting records: the placements each data class allows, what each
+agent autonomy may do without a human, and who approves each kind of change
+(`portal.rego` says what a change does and keeps the floors no setting can lower: a
+project's owner for its records, the platform team for the policy, the catalog and the
+settings, security for the policy and the settings). This repo has the rules, their
 format and the renderers.
 
 ## How a change goes live

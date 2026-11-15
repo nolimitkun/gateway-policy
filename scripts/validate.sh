@@ -31,6 +31,14 @@ echo "==> opa"
 if opa check --strict policies/gateway >/dev/null; then ok "opa check"; else bad "opa check policies/gateway"; fi
 if [[ -z "$(opa fmt --list policies/gateway)" ]]; then ok "opa fmt"; else bad "opa fmt (run: opa fmt -w policies/gateway)"; fi
 if opa test policies/gateway "$data" >/dev/null; then ok "opa test"; else bad "opa test"; opa test policies/gateway "$data" || true; fi
+# The approvals setting's triggers (settings/schema.json) are the ones portal.rego knows.
+if python3 - "$(opa eval -d policies/gateway --format raw 'json.marshal(object.keys(data.portal.default_approvals))')" <<'PY'
+import json, sys
+schema = set(json.load(open("settings/schema.json"))["approvals"]["required"])
+code = set(json.loads(sys.argv[1]))
+sys.exit(0 if schema == code else print("schema only:", sorted(schema - code), "code only:", sorted(code - schema)) or 1)
+PY
+then ok "approval triggers: schema and portal.rego agree"; else bad "approval triggers (settings/schema.json approvals vs portal.rego default_approvals)"; fi
 # Build both bundles as the project registry does (tests left out, roots from each
 # .manifest) and load them together, as OPA does: overlapping roots fail here.
 if opa build -b policies/gateway --ignore '*_test.rego' -o "$tmp/policy.tar.gz" >/dev/null \

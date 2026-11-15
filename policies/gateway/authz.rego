@@ -119,11 +119,12 @@ agent_tool_matches(name) if {
 # A supervised agent's write, and any agent's irreversible call, needs an
 # approval; there is no approval path through the gateway yet, so they are
 # refused with a reason that says so.
-autonomy_risks := {
-	"read-only": {"read"},
-	"supervised": {"read"},
-	"autonomous": {"read", "write"},
-}
+# The registry's autonomy setting, or these values until it has one.
+autonomy_risks := object.get(lib.settings, "autonomy", {
+	"read-only": ["read"],
+	"supervised": ["read"],
+	"autonomous": ["read", "write"],
+})
 
 # A tool the catalog doesn't list counts as irreversible: new or renamed tools
 # stay out of agents' reach until someone has classified them.
